@@ -1,0 +1,10 @@
+coverage.out
+checkstyle.xml
+.drone.yml
+
+/bin
+/dist
+/hugo
+
+/node_modules
+/assets
