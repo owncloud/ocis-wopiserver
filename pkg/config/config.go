@@ -58,9 +58,9 @@ type TokenManager struct {
 }
 
 type WopiServer struct {
-	WopiServerHost     string
-	WopiServerSecret   string
-	WopiServerInsecure bool
+	Host     string
+	Secret   string
+	Insecure bool
 }
 
 // Config combines all available configuration parts.

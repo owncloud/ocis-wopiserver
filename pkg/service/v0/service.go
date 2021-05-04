@@ -127,14 +127,14 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	swt := jwt.NewWithClaims(jwt.SigningMethodHS256, wt)
-	wopiToken, err := swt.SignedString([]byte(p.config.WopiServer.WopiServerSecret))
+	wopiToken, err := swt.SignedString([]byte(p.config.WopiServer.Secret))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.logger.Err(err)
 		return
 	}
 
-	extensions, err := getExtensions(p.config.WopiServer.WopiServerHost, p.config.WopiServer.WopiServerInsecure)
+	extensions, err := getExtensions(p.config.WopiServer.Host, p.config.WopiServer.Insecure)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.logger.Err(err)
@@ -165,7 +165,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 
 	res := WopiResponse{
 		WopiAccessToken: wopiToken,
-		WopiClientURL:   wopiClientHost + "?WOPISrc=" + p.config.WopiServer.WopiServerHost + "/wopi/files/1", // TODO: set URI even if totally unused
+		WopiClientURL:   wopiClientHost + "?WOPISrc=" + p.config.WopiServer.Host + "/wopi/files/1", // TODO: set URI even if totally unused
 	}
 
 	js, err := json.Marshal(res)

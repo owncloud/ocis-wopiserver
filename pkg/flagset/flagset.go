@@ -181,21 +181,21 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			Value:       "Pive-Fumkiu4",
 			Usage:       "Used to create JWT tokens for the WOPI server",
 			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_SECRET"},
-			Destination: &cfg.WopiServer.WopiServerSecret,
+			Destination: &cfg.WopiServer.Secret,
 		},
 		&cli.StringFlag{
 			Name:        "wopi-server-host",
 			Value:       "http://127.0.0.1:8880",
 			Usage:       "Wopiserver Host",
 			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_HOST"},
-			Destination: &cfg.WopiServer.WopiServerHost,
+			Destination: &cfg.WopiServer.Host,
 		},
 		&cli.BoolFlag{
 			Name:        "wopi-server-insecure",
 			Value:       false,
 			Usage:       "Wopiserver insecure",
 			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_INSECURE"},
-			Destination: &cfg.WopiServer.WopiServerInsecure,
+			Destination: &cfg.WopiServer.Insecure,
 		},
 	}
 }

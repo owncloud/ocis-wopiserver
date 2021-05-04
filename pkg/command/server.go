@@ -33,7 +33,7 @@ func Server(cfg *config.Config) *cli.Command {
 			if !cfg.Supervised {
 				return ParseConfig(ctx, cfg)
 			}
-			logger.Debug().Str("service", "graph-explorer").Msg("ignoring config file parsing when running supervised")
+			logger.Debug().Str("service", "wopiserver").Msg("ignoring config file parsing when running supervised")
 			return nil
 		},
 		Action: func(c *cli.Context) error {
