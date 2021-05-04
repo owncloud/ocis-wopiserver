@@ -36,14 +36,16 @@ pipelineVolumeOC10Tests = \
     }
 
 def pipelineDependsOn(pipeline, dependant_pipelines):
-    pipeline["depends_on"] = getPipelineNames(dependant_pipelines)
+    if "depends_on" in pipeline.keys():
+        pipeline["depends_on"]= pipeline["depends_on"] + getPipelineNames(dependant_pipelines)
+    else:
+        pipeline["depends_on"] = getPipelineNames(dependant_pipelines)
     return pipeline
 
 def pipelinesDependsOn(pipelines, dependant_pipelines):
     pipes = []
     for pipeline in pipelines:
-        pipeline["depends_on"] = getPipelineNames(dependant_pipelines)
-        pipes.append(pipeline)
+        pipes.append(pipelineDependsOn(pipeline, dependant_pipelines))
 
     return pipes
 
@@ -200,6 +202,7 @@ def dockerReleases(ctx):
             pipelines,
         ),
     )
+
     pipelines.append(
         pipelineDependsOn(
             releaseDockerReadme(ctx),
@@ -441,16 +444,16 @@ def binaryRelease(ctx, name):
 
     settings = {
         "endpoint": {
-            "from_secret": "s3_endpoint",
+            "from_secret": "upload_s3_endpoint",
         },
         "access_key": {
-            "from_secret": "aws_access_key_id",
+            "from_secret": "upload_s3_access_key",
         },
         "secret_key": {
-            "from_secret": "aws_secret_access_key",
+            "from_secret": "upload_s3_secret_key",
         },
         "bucket": {
-            "from_secret": "s3_bucket",
+            "from_secret": "upload_s3_bucket",
         },
         "path_style": True,
         "strip_prefix": "dist/release/",
