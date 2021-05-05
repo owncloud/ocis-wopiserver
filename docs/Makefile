@@ -8,7 +8,7 @@ help:
 
 .PHONY: docs-generate
 docs-generate: ## run docs-generate
-	#@$(MAKE) --no-print-directory -C ../ docs-generate
+	@$(MAKE) --no-print-directory -C ../ docs-generate
 
 .PHONY: docs-init
 docs-init:

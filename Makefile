@@ -20,6 +20,10 @@ include .make/release.mk
 ############ docs generate ############
 include .make/docs.mk
 
+.PHONY: docs-generate
+docs-generate: config-docs-generate
+
+
 ############ l10n ############
 include .make/l10n.mk
 
