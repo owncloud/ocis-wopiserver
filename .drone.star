@@ -729,7 +729,7 @@ def docs(ctx):
                     "password": {
                         "from_secret": "github_token",
                     },
-                    "pages_directory": "docs/extensions/wopi",
+                    "pages_directory": "docs/extensions/wopiserver",
                     "target_branch": "docs",
                 },
                 "when": {
