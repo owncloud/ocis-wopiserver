@@ -1,7 +1,7 @@
 ---
 title: oCIS WOPI server
 geekdocRepo: https://github.com/owncloud/ocis-wopiserver
-geekdocEditPath: edit/main/docs
+geekdocEditPath: edit/main/docs/extensions/wopiserver
 geekdocFilePath: _index.md
 geekdocCollapseSection: true
 ---
