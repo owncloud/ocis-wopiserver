@@ -1,6 +1,6 @@
 ---
 title: "Configuration"
-date: "2021-05-05T09:48:26+0000"
+date: "2021-05-06T12:09:29+0000"
 weight: 20
 geekdocRepo: https://github.com/owncloud/ocis-wopiserver
 geekdocEditPath: edit/main/templates
