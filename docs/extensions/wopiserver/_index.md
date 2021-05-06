@@ -1,5 +1,6 @@
 ---
-title: oCIS WOPI server
+title: WOPI server
+weight: 20
 geekdocRepo: https://github.com/owncloud/ocis-wopiserver
 geekdocEditPath: edit/main/docs/extensions/wopiserver
 geekdocFilePath: _index.md
