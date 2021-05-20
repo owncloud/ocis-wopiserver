@@ -54,7 +54,8 @@ export default {
     ...mapActions('Wopi', ['loadDocument']),
     reloadWopi () {
       this.$nextTick(() => {
-        document.getElementById('collabora-submit-form').submit()
+        // document.getElementById('collabora-submit-form').submit()
+        window.open(this.wopiClientUrl)
       })
     }
   }

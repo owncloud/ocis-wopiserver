@@ -1,6 +1,7 @@
 package svc
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
@@ -8,7 +9,12 @@ import (
 	"net/http"
 	"path/filepath"
 
+	merrors "github.com/asim/go-micro/v3/errors"
+	gateway "github.com/cs3org/go-cs3apis/cs3/gateway/v1beta1"
+	rpc "github.com/cs3org/go-cs3apis/cs3/rpc/v1beta1"
+	provider "github.com/cs3org/go-cs3apis/cs3/storage/provider/v1beta1"
 	"github.com/cs3org/reva/pkg/auth/scope"
+	"github.com/cs3org/reva/pkg/token"
 	"github.com/cs3org/reva/pkg/token/manager/jwt"
 	"github.com/cs3org/reva/pkg/user"
 	"github.com/go-chi/chi"
@@ -17,6 +23,7 @@ import (
 	"github.com/owncloud/ocis-wopiserver/pkg/config"
 	"github.com/owncloud/ocis/ocis-pkg/log"
 	ocsm "github.com/owncloud/ocis/ocis-pkg/middleware"
+	"google.golang.org/grpc/metadata"
 )
 
 // Service defines the extension handlers.
@@ -41,14 +48,16 @@ func NewService(opts ...Option) Service {
 	))
 
 	svc := WopiServer{
-		logger: options.Logger,
-		config: options.Config,
-		mux:    m,
+		serviceID: options.Config.HTTP.Namespace + "." + options.Config.Server.Name,
+		logger:    options.Logger,
+		config:    options.Config,
+		mux:       m,
 		c: &http.Client{Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: options.Config.WopiServer.Insecure,
 			},
 		}},
+		cs3Client: options.CS3Client,
 	}
 
 	m.Route(options.Config.HTTP.Root, func(r chi.Router) {
@@ -63,10 +72,12 @@ func NewService(opts ...Option) Service {
 
 // WopiServer defines implements the business logic for Service.
 type WopiServer struct {
-	logger log.Logger
-	config *config.Config
-	mux    *chi.Mux
-	c      *http.Client
+	serviceID string
+	logger    log.Logger
+	config    *config.Config
+	mux       *chi.Mux
+	c         *http.Client
+	cs3Client gateway.GatewayAPIClient
 }
 
 // ServeHTTP implements the Service interface.
@@ -116,8 +127,14 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mode := "write"                                     // TODO: decide how to open it
-	storageID := "1284d238-aa92-42ce-bdc4-0b0000009157" // TODO: make dynamic
+	statResponse, err := p.stat(filePath, revaToken)
+	if err != nil {
+		p.logger.Err(err)
+		return
+	}
+
+	// TODO: decide how to open it
+	mode := "write"
 
 	extensions, err := p.getExtensions()
 	if err != nil {
@@ -152,7 +169,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wopiSrc, err := p.getWopiSrc(filePath, viewMode, storageID, folderPath, revaToken)
+	wopiSrc, err := p.getWopiSrc(filePath, viewMode, statResponse.Info.Id.StorageId, folderPath, revaToken)
 	if err != nil {
 		p.logger.Err(err)
 		return
@@ -232,4 +249,33 @@ func (p WopiServer) getWopiSrc(filePath string, viewMode string, storageID strin
 		return "", err
 	}
 	return string(b), err
+}
+
+func (p WopiServer) stat(path, auth string) (*provider.StatResponse, error) {
+	ctx := metadata.AppendToOutgoingContext(context.Background(), token.TokenHeader, auth)
+
+	req := &provider.StatRequest{
+		Ref: &provider.Reference{
+			Spec: &provider.Reference_Path{Path: path},
+		},
+	}
+	rsp, err := p.cs3Client.Stat(ctx, req)
+	if err != nil {
+		p.logger.Error().Err(err).Str("path", path).Msg("could not stat file")
+		return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", err.Error())
+	}
+
+	if rsp.Status.Code != rpc.Code_CODE_OK {
+		switch rsp.Status.Code {
+		case rpc.Code_CODE_NOT_FOUND:
+			return nil, merrors.NotFound(p.serviceID, "could not stat file: %s", rsp.Status.Message)
+		default:
+			p.logger.Error().Str("status_message", rsp.Status.Message).Str("path", path).Msg("could not stat file")
+			return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", rsp.Status.Message)
+		}
+	}
+	if rsp.Info.Type != provider.ResourceType_RESOURCE_TYPE_FILE {
+		return nil, merrors.BadRequest(p.serviceID, "Unsupported file type")
+	}
+	return rsp, nil
 }

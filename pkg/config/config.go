@@ -58,9 +58,10 @@ type TokenManager struct {
 }
 
 type WopiServer struct {
-	Host     string
-	Secret   string
-	Insecure bool
+	Host        string
+	Secret      string
+	Insecure    bool
+	RevaGateway string
 }
 
 // Config combines all available configuration parts.

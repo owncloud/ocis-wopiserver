@@ -204,5 +204,12 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			EnvVars:     []string{"WOPISERVER_JWT_SECRET", "OCIS_JWT_SECRET"},
 			Destination: &cfg.TokenManager.JWTSecret,
 		},
+		&cli.StringFlag{
+			Name:        "reva-gateway-addr",
+			Value:       flags.OverrideDefaultString(cfg.WopiServer.RevaGateway, "127.0.0.1:9142"),
+			Usage:       "Reva gateway address",
+			EnvVars:     []string{"WOPISERVER_REVA_GATEWAY"},
+			Destination: &cfg.WopiServer.RevaGateway,
+		},
 	}
 }
