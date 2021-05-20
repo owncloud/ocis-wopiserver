@@ -133,9 +133,6 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: decide how to open it
-	mode := "write"
-
 	extensions, err := p.getExtensions()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -155,21 +152,22 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	wopiClientHost := ""
 	viewMode := ""
 
-	switch mode {
-	case "view":
-		wopiClientHost = extensionHandler.ViewURL
-		viewMode = "VIEW_MODE_VIEW_ONLY"
-	case "read":
-		wopiClientHost = extensionHandler.ViewURL
-		viewMode = "VIEW_MODE_READ_ONLY"
-	case "write":
+	if statResponse.Info.PermissionSet.InitiateFileUpload && statResponse.Info.PermissionSet.InitiateFileDownload {
 		wopiClientHost = extensionHandler.EditURL
 		viewMode = "VIEW_MODE_READ_WRITE"
-	case "default":
+	} else if !statResponse.Info.PermissionSet.InitiateFileUpload && statResponse.Info.PermissionSet.InitiateFileDownload {
+		wopiClientHost = extensionHandler.ViewURL
+		viewMode = "VIEW_MODE_READ_ONLY"
+	} else if !statResponse.Info.PermissionSet.InitiateFileUpload && statResponse.Info.PermissionSet.InitiateFileDownload {
+		// TODO: this branch will never be entered
+		// permission set is not really useful for this case -> need to use this https://github.com/cs3org/cs3apis/blob/master/cs3/app/provider/v1beta1/provider_api.proto#L79
+		wopiClientHost = extensionHandler.ViewURL
+		viewMode = "VIEW_MODE_VIEW_ONLY"
+	} else {
 		return
 	}
 
-	wopiSrc, err := p.getWopiSrc(filePath, viewMode, statResponse.Info.Id.StorageId, folderPath, revaToken)
+	wopiSrc, err := p.getWopiSrc(filePath, viewMode, statResponse.Info.Id.StorageId, folderPath, user.DisplayName, revaToken)
 	if err != nil {
 		p.logger.Err(err)
 		return
@@ -223,7 +221,7 @@ func (p WopiServer) getExtensions() (extensions map[string]ExtensionHandler, err
 	return extensions, err
 }
 
-func (p WopiServer) getWopiSrc(filePath string, viewMode string, storageID string, folderURL string, revaToken string) (resp string, err error) {
+func (p WopiServer) getWopiSrc(filePath string, viewMode string, storageID string, folderURL string, userName string, revaToken string) (resp string, err error) {
 
 	req, err := http.NewRequest("GET", p.config.WopiServer.Host+"/wopi/iop/open", nil)
 
@@ -235,6 +233,7 @@ func (p WopiServer) getWopiSrc(filePath string, viewMode string, storageID strin
 	q.Add("viewmode", viewMode)
 	q.Add("folderurl", folderURL)
 	q.Add("endpoint", storageID)
+	q.Add("username", userName)
 	req.URL.RawQuery = q.Encode()
 
 	r, err := p.c.Do(req)
