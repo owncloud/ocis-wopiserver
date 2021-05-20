@@ -107,7 +107,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 
 	tokenManager, err := jwt.New(map[string]interface{}{
 		"secret":  p.config.TokenManager.JWTSecret,
-		"expires": int64(60),
+		"expires": int64(60 * 60),
 	})
 	if err != nil {
 		p.logger.Err(err)
@@ -175,16 +175,19 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// more options used by oC 10
+	wopiClientURL := wopiClientHost // already includes ?permission=<readonly/edit>
+	wopiClientURL += "&WOPISrc=" + wopiSrc
+	// more options used by oC 10:
 	// &lang=en-GB
 	// &closebutton=1
 	// &revisionhistory=1
 	// &title=Hello.odt
-	res := WopiResponse{
-		WopiClientURL: wopiClientHost + "?WOPISrc=" + wopiSrc,
-	}
 
-	js, err := json.Marshal(res)
+	js, err := json.Marshal(
+		WopiResponse{
+			WopiClientURL: wopiClientURL,
+		},
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.logger.Err(err)
