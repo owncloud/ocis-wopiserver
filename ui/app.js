@@ -13,6 +13,16 @@ const appInfo = {
       extension: 'odt',
       routeName: 'wopi-edit',
       icon: 'x-office-document'
+    },
+    {
+      extension: 'ods',
+      routeName: 'wopi-edit',
+      icon: 'x-office-document'
+    },
+    {
+      extension: 'odp',
+      routeName: 'wopi-edit',
+      icon: 'x-office-document'
     }
   ]
 }
@@ -22,28 +32,12 @@ const routes = [
     name: 'edit',
     path: '/edit/:filePath',
     components: {
-      fullscreen: App
-    }
-  },
-  {
-    name: 'open',
-    path: '/',
-    components: {
       app: App
     }
   }
 ]
 
-const navItems = [
-  {
-    name: 'Wopi',
-    iconMaterial: appInfo.icon,
-    route: {
-      name: 'open',
-      path: `/${appInfo.id}/`
-    }
-  }
-]
+const navItems = []
 
 export default {
   appInfo,

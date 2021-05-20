@@ -4,6 +4,7 @@ import (
 	"github.com/asim/go-micro/v3"
 	svc "github.com/owncloud/ocis-wopiserver/pkg/service/v0"
 	"github.com/owncloud/ocis-wopiserver/pkg/version"
+	"github.com/owncloud/ocis/ocis-pkg/account"
 	"github.com/owncloud/ocis/ocis-pkg/middleware"
 	"github.com/owncloud/ocis/ocis-pkg/service/http"
 )
@@ -31,6 +32,10 @@ func Server(opts ...Option) (http.Service, error) {
 			middleware.NoCache,
 			middleware.Cors,
 			middleware.Secure,
+			middleware.ExtractAccountUUID(
+				account.Logger(options.Logger),
+				account.JWTSecret(options.Config.TokenManager.JWTSecret),
+			),
 			middleware.Version(
 				"wopiserver",
 				version.String,

@@ -2,8 +2,7 @@ import axios from 'axios'
 
 const state = {
   config: null,
-  wopiClientUrl: '',
-  accessToken: ''
+  wopiClientUrl: ''
 }
 
 const getters = {
@@ -24,7 +23,7 @@ const actions = {
 
     axios.get(tokenUrl, { params: { filePath: filePath } })
       .then(response => {
-        commit('SET_DOCUMENT', { wopiClientUrl: response.data.wopiclienturl, accessToken: response.data.accesstoken })
+        commit('SET_DOCUMENT', { wopiClientUrl: response.data.wopiclienturl })
       })
       .catch(error => {
         this.errorMessage = error.message
@@ -34,9 +33,8 @@ const actions = {
 }
 
 const mutations = {
-  SET_DOCUMENT (state, { wopiClientUrl, accessToken }) {
+  SET_DOCUMENT (state, { wopiClientUrl }) {
     state.wopiClientUrl = wopiClientUrl
-    state.accessToken = accessToken
   },
   LOAD_CONFIG (state, config) {
     state.config = config

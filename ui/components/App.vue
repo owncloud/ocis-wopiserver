@@ -1,14 +1,5 @@
 <template>
   <div class="uk-flex uk-flex-column uk-flex-middle uk-height-1-1">
-    <h1>WOPI</h1>
-
-    <form v-on:submit.prevent="openFile(filePathBox)" action="#" method="post">
-      <oc-text-input v-model="filePathBox" placeholder="/home/Hello.odt" />
-
-      <oc-button variation="primary" class="uk-width-1-1 uk-margin-top">
-        Open
-      </oc-button>
-    </form>
 
     <div style="display: none">
       <!-- if you want to load it to the iframe below use this target: -->
@@ -20,12 +11,6 @@
         target="_blank"
         id="collabora-submit-form"
       >
-        <input
-          name="access_token"
-          :value="accessToken"
-          type="hidden"
-          id="access-token"
-        />
         <input type="submit" value="" />
       </form>
     </div>
@@ -48,8 +33,9 @@ export default {
       filePathBox: ''
     }
   },
-  created () {
-    // this.loadDocument(this.filePath)
+  mounted () {
+    console.log('wopi mounted')
+    this.loadDocument(this.filePath)
   },
 
   watch: {
@@ -59,9 +45,9 @@ export default {
   },
 
   computed: {
-    ...mapState('Wopi', ['wopiClientUrl', 'accessToken']),
+    ...mapState('Wopi', ['wopiClientUrl']),
     filePath () {
-      return this.$route.params.filePath
+      return '/home' + this.$route.params.filePath
     }
   },
   methods: {
@@ -70,9 +56,6 @@ export default {
       this.$nextTick(() => {
         document.getElementById('collabora-submit-form').submit()
       })
-    },
-    openFile (targetFile) {
-      this.$store.dispatch('Wopi/loadDocument', targetFile)
     }
   }
 }

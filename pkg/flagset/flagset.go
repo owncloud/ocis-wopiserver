@@ -197,5 +197,12 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_INSECURE"},
 			Destination: &cfg.WopiServer.Insecure,
 		},
+		&cli.StringFlag{
+			Name:        "jwt-secret",
+			Value:       flags.OverrideDefaultString(cfg.TokenManager.JWTSecret, "Pive-Fumkiu4"),
+			Usage:       "Used to create JWT to talk to reva, should equal reva's jwt-secret",
+			EnvVars:     []string{"WOPISERVER_JWT_SECRET", "OCIS_JWT_SECRET"},
+			Destination: &cfg.TokenManager.JWTSecret,
+		},
 	}
 }
