@@ -107,7 +107,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 
 	tokenManager, err := jwt.New(map[string]interface{}{
 		"secret":  p.config.TokenManager.JWTSecret,
-		"expires": int64(60 * 60),
+		"expires": int64(60),
 	})
 	if err != nil {
 		p.logger.Err(err)
@@ -151,18 +151,24 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 
 	wopiClientHost := ""
 	viewMode := ""
+	editPerm := statResponse.Info.PermissionSet.InitiateFileUpload
+	viewPerm := statResponse.Info.PermissionSet.InitiateFileDownload
+	emtpyFile := statResponse.Info.Size == 0
 
-	if statResponse.Info.PermissionSet.InitiateFileUpload && statResponse.Info.PermissionSet.InitiateFileDownload {
+	if editPerm && viewPerm && emtpyFile {
+		wopiClientHost = extensionHandler.NewURL //let WOPI client do the file initialization
+		viewMode = "VIEW_MODE_READ_WRITE"
+	} else if editPerm && viewPerm && !emtpyFile {
 		wopiClientHost = extensionHandler.EditURL
 		viewMode = "VIEW_MODE_READ_WRITE"
-	} else if !statResponse.Info.PermissionSet.InitiateFileUpload && statResponse.Info.PermissionSet.InitiateFileDownload {
+	} else if !editPerm && viewPerm && !emtpyFile {
 		wopiClientHost = extensionHandler.ViewURL
 		viewMode = "VIEW_MODE_READ_ONLY"
-	} else if !statResponse.Info.PermissionSet.InitiateFileUpload && statResponse.Info.PermissionSet.InitiateFileDownload {
-		// TODO: this branch will never be entered
-		// permission set is not really useful for this case -> need to use this https://github.com/cs3org/cs3apis/blob/master/cs3/app/provider/v1beta1/provider_api.proto#L79
-		wopiClientHost = extensionHandler.ViewURL
-		viewMode = "VIEW_MODE_VIEW_ONLY"
+		//} else if !editPerm && viewPerm && !emtpyFile {
+		//	 TODO: this branch will never be entered
+		//	 permission set is not really useful for this case -> need to use this https://github.com/cs3org/cs3apis/blob/master/cs3/app/provider/v1beta1/provider_api.proto#L79
+		//	wopiClientHost = extensionHandler.ViewURL
+		//	viewMode = "VIEW_MODE_VIEW_ONLY"
 	} else {
 		return
 	}

@@ -8,123 +8,7 @@ const appInfo = {
   id: 'wopi',
   isFileEditor: true,
   icon: 'x-office-document',
-  extensions: [
-    {
-      extension: 'odt',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'ott',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'ods',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'ots',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'odp',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'otp',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'odg',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'otg',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'doc',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'dot',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'xls',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'xlt',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'xlm',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'ppt',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'pot',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'pps',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'vsd',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'dxf',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'wmf',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'cdr',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'pages',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'number',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    },
-    {
-      extension: 'key',
-      routeName: 'wopi-edit',
-      icon: 'x-office-document'
-    }
-  ]
+  extensions: getExtensions(openModes, fileExtensions)
 }
 
 const routes = [
@@ -144,4 +28,61 @@ export default {
   store,
   routes,
   navItems
+}
+
+
+const fileExtensions = [
+  'odt',
+  'ott',
+  'ods',
+  'odp',
+  'odg',
+  'otg',
+  'doc',
+  'dot',
+  'xls',
+  'xlt',
+  'xlm',
+  'ppt',
+  'pot',
+  'pps',
+  'vsd',
+  'dxf',
+  'wmf',
+  'cdr',
+  'pages',
+  'number',
+  'key'
+]
+
+const openModes = [
+  'edit'
+]
+
+function getExtension (openMode, fileExtension) {
+  return {
+    extension: fileExtension,
+    routeName: 'wopi-' + openMode,
+    icon: 'x-office-document',
+    newFileMenu: {
+      menuTitle ($gettext) {
+        return $gettext('New ' + fileExtension.toUpperCase() + ' document')
+      }
+    }
+  }
+}
+
+function getExtensions (openModes, fileExtensions) {
+  const ext = []
+  openModes.forEach(
+    function (m) {
+      fileExtensions.forEach(
+        function (e) {
+          ext.push(getExtension(m, e)
+          )
+        }
+      )
+    }
+  )
+  return ext
 }
