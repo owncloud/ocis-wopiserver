@@ -1,35 +1,7 @@
 import 'regenerator-runtime/runtime'
-import App from './components/App.vue'
+import axios from 'axios'
 
 import store from './store'
-
-const appInfo = {
-  name: 'Wopi',
-  id: 'wopi',
-  isFileEditor: true,
-  icon: 'x-office-document',
-  extensions: getExtensions(openModes, fileExtensions)
-}
-
-const routes = [
-  {
-    name: 'edit',
-    path: '/edit/:filePath',
-    components: {
-      app: App
-    }
-  }
-]
-
-const navItems = []
-
-export default {
-  appInfo,
-  store,
-  routes,
-  navItems
-}
-
 
 const fileExtensions = [
   'odt',
@@ -59,11 +31,42 @@ const openModes = [
   'edit'
 ]
 
+const appInfo = {
+  name: 'Wopi',
+  id: 'wopi',
+  isFileEditor: true,
+  icon: 'x-office-document',
+  extensions: getExtensions(openModes, fileExtensions)
+}
+
+export default {
+  appInfo,
+  store
+}
+
 function getExtension (openMode, fileExtension) {
   return {
     extension: fileExtension,
-    routeName: 'wopi-' + openMode,
     icon: 'x-office-document',
+    handler: function ({ extensionConfig, filePath, fileId }) {
+      axios.interceptors.request.use(config => {
+        if (typeof config.headers.Authorization === 'undefined') {
+          if (window.Vue.$store.getters['Wopi/accessToken']) {
+            config.headers.Authorization = 'Bearer ' + window.Vue.$store.getters['Wopi/accessToken']
+          }
+        }
+        return config
+      })
+      const tokenUrl = window.Vue.$store.getters['Wopi/getServerForJsClient'] + '/api/v0/wopi/open'
+      axios.get(tokenUrl, { params: { filePath: '/home' + filePath, fileId: fileId } })
+        .then(response => {
+          window.open(response.data.wopiclienturl)
+        })
+        .catch(error => {
+          this.errorMessage = error.message
+          console.error('There was an error!', error)
+        })
+    },
     newFileMenu: {
       menuTitle ($gettext) {
         return $gettext('New ' + fileExtension.toUpperCase() + ' document')
