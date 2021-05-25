@@ -3,6 +3,7 @@ import axios from 'axios'
 
 import store from './store'
 
+// file extensions that are supported to be opened
 const fileExtensions = [
   'odt',
   'ott',
@@ -27,6 +28,14 @@ const fileExtensions = [
   'key'
 ]
 
+// file extensions that are working to create new files
+const newFileExtensions = [
+  'odt',
+  'ods',
+  'odp',
+  'odg'
+]
+
 const openModes = [
   'edit'
 ]
@@ -45,9 +54,23 @@ export default {
 }
 
 function getExtension (openMode, fileExtension) {
+  let newFileMenu = null
+  if (newFileExtensions.includes(fileExtension)) {
+    newFileMenu = {
+      menuTitle ($gettext) {
+        return $gettext('New ' + fileExtension.toUpperCase() + ' document')
+      }
+    }
+  }
   return {
     extension: fileExtension,
     icon: 'x-office-document',
+    routes: [
+      'files-personal',
+      'files-favorites',
+      'files-shared-with-others',
+      'files-shared-with-me'
+    ],
     handler: function ({ extensionConfig, filePath, fileId }) {
       axios.interceptors.request.use(config => {
         if (typeof config.headers.Authorization === 'undefined') {
@@ -64,14 +87,10 @@ function getExtension (openMode, fileExtension) {
         })
         .catch(error => {
           this.errorMessage = error.message
-          console.error('There was an error!', error)
+          console.error('opening file with WOPI failed', error)
         })
     },
-    newFileMenu: {
-      menuTitle ($gettext) {
-        return $gettext('New ' + fileExtension.toUpperCase() + ' document')
-      }
-    }
+    newFileMenu: newFileMenu
   }
 }
 
