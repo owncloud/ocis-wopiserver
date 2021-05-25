@@ -173,7 +173,11 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wopiSrc, err := p.getWopiSrc(filePath, viewMode, statResponse.Info.Id.StorageId, folderPath, user.DisplayName, revaToken)
+	wopiSrc, err := p.getWopiSrc(
+		statResponse.Info.Id.OpaqueId, viewMode,
+		statResponse.Info.Id.StorageId, folderPath,
+		user.DisplayName, revaToken,
+	)
 	if err != nil {
 		p.logger.Err(err)
 		return
@@ -227,7 +231,7 @@ func (p WopiServer) getExtensions() (extensions map[string]ExtensionHandler, err
 	return extensions, err
 }
 
-func (p WopiServer) getWopiSrc(filePath string, viewMode string, storageID string, folderURL string, userName string, revaToken string) (resp string, err error) {
+func (p WopiServer) getWopiSrc(fileRef string, viewMode string, storageID string, folderURL string, userName string, revaToken string) (resp string, err error) {
 
 	req, err := http.NewRequest("GET", p.config.WopiServer.Host+"/wopi/iop/open", nil)
 
@@ -235,7 +239,7 @@ func (p WopiServer) getWopiSrc(filePath string, viewMode string, storageID strin
 	req.Header.Add("TokenHeader", revaToken)
 
 	q := req.URL.Query()
-	q.Add("filename", filePath)
+	q.Add("filename", fileRef) // can be the file path or an opaque ID
 	q.Add("viewmode", viewMode)
 	q.Add("folderurl", folderURL)
 	q.Add("endpoint", storageID)
