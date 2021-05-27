@@ -103,7 +103,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	folderPath, _ := filepath.Split(filePath)
+	folderPath := filepath.Dir(filePath)
 
 	tokenManager, err := jwt.New(map[string]interface{}{
 		"secret":  p.config.TokenManager.JWTSecret,
