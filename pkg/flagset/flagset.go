@@ -197,5 +197,19 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_INSECURE"},
 			Destination: &cfg.WopiServer.Insecure,
 		},
+		&cli.StringFlag{
+			Name:        "jwt-secret",
+			Value:       flags.OverrideDefaultString(cfg.TokenManager.JWTSecret, "Pive-Fumkiu4"),
+			Usage:       "Used to create JWT to talk to reva, should equal reva's jwt-secret",
+			EnvVars:     []string{"WOPISERVER_JWT_SECRET", "OCIS_JWT_SECRET"},
+			Destination: &cfg.TokenManager.JWTSecret,
+		},
+		&cli.StringFlag{
+			Name:        "reva-gateway-addr",
+			Value:       flags.OverrideDefaultString(cfg.WopiServer.RevaGateway, "127.0.0.1:9142"),
+			Usage:       "Reva gateway address",
+			EnvVars:     []string{"WOPISERVER_REVA_GATEWAY_ADDR"},
+			Destination: &cfg.WopiServer.RevaGateway,
+		},
 	}
 }

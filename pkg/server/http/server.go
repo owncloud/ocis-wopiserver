@@ -2,8 +2,10 @@ package http
 
 import (
 	"github.com/asim/go-micro/v3"
+	"github.com/cs3org/reva/pkg/rgrpc/todo/pool"
 	svc "github.com/owncloud/ocis-wopiserver/pkg/service/v0"
 	"github.com/owncloud/ocis-wopiserver/pkg/version"
+	"github.com/owncloud/ocis/ocis-pkg/account"
 	"github.com/owncloud/ocis/ocis-pkg/middleware"
 	"github.com/owncloud/ocis/ocis-pkg/service/http"
 )
@@ -22,6 +24,12 @@ func Server(opts ...Option) (http.Service, error) {
 		http.Flags(options.Flags...),
 	)
 
+	gc, err := pool.GetGatewayServiceClient(options.Config.WopiServer.RevaGateway)
+	if err != nil {
+		options.Logger.Error().Err(err).Msg("could not get gateway client")
+		return http.Service{}, err
+	}
+
 	handle := svc.NewService(
 		svc.Logger(options.Logger),
 		svc.Config(options.Config),
@@ -31,6 +39,10 @@ func Server(opts ...Option) (http.Service, error) {
 			middleware.NoCache,
 			middleware.Cors,
 			middleware.Secure,
+			middleware.ExtractAccountUUID(
+				account.Logger(options.Logger),
+				account.JWTSecret(options.Config.TokenManager.JWTSecret),
+			),
 			middleware.Version(
 				"wopiserver",
 				version.String,
@@ -39,6 +51,7 @@ func Server(opts ...Option) (http.Service, error) {
 				options.Logger,
 			),
 		),
+		svc.CS3Client(gc),
 	)
 
 	{

@@ -1,20 +1,30 @@
 package svc
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"path/filepath"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	merrors "github.com/asim/go-micro/v3/errors"
+	gateway "github.com/cs3org/go-cs3apis/cs3/gateway/v1beta1"
+	rpc "github.com/cs3org/go-cs3apis/cs3/rpc/v1beta1"
+	provider "github.com/cs3org/go-cs3apis/cs3/storage/provider/v1beta1"
+	"github.com/cs3org/reva/pkg/auth/scope"
+	"github.com/cs3org/reva/pkg/token"
+	"github.com/cs3org/reva/pkg/token/manager/jwt"
+	"github.com/cs3org/reva/pkg/user"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/owncloud/ocis-wopiserver/pkg/assets"
 	"github.com/owncloud/ocis-wopiserver/pkg/config"
 	"github.com/owncloud/ocis/ocis-pkg/log"
 	ocsm "github.com/owncloud/ocis/ocis-pkg/middleware"
+	"google.golang.org/grpc/metadata"
 )
 
 // Service defines the extension handlers.
@@ -39,9 +49,16 @@ func NewService(opts ...Option) Service {
 	))
 
 	svc := WopiServer{
-		logger: options.Logger,
-		config: options.Config,
-		mux:    m,
+		serviceID: options.Config.HTTP.Namespace + "." + options.Config.Server.Name,
+		logger:    options.Logger,
+		config:    options.Config,
+		mux:       m,
+		httpClient: &http.Client{Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: options.Config.WopiServer.Insecure,
+			},
+		}},
+		client: options.CS3Client,
 	}
 
 	m.Route(options.Config.HTTP.Root, func(r chi.Router) {
@@ -56,9 +73,12 @@ func NewService(opts ...Option) Service {
 
 // WopiServer defines implements the business logic for Service.
 type WopiServer struct {
-	logger log.Logger
-	config *config.Config
-	mux    *chi.Mux
+	serviceID  string
+	logger     log.Logger
+	config     *config.Config
+	mux        *chi.Mux
+	httpClient *http.Client
+	client     gateway.GatewayAPIClient
 }
 
 // ServeHTTP implements the Service interface.
@@ -71,21 +91,12 @@ func (p WopiServer) NotFound(w http.ResponseWriter, r *http.Request) {
 }
 
 type WopiResponse struct {
-	WopiAccessToken string `json:"accesstoken"`
-	WopiClientURL   string `json:"wopiclienturl"`
-}
-
-type WopiToken struct {
-	ViewMode  string `json:"viewmode"`
-	Token     string `json:"userid"`
-	StorageID string `json:"endpoint"`
-	FolderURL string `json:"folderurl"`
-	FilePath  string `json:"filename"`
-	UserName  string `json:"username"`
-	jwt.StandardClaims
+	WopiClientURL string `json:"wopiclienturl"`
 }
 
 func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	filePath := r.URL.Query().Get("filePath")
 	if filePath == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -93,48 +104,37 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := r.Header.Get("X-Access-Token")
-	if token == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	folderPath := filepath.Dir(filePath)
 
-	mode := "write" // TODO: decide how to open it
-
-	viewmode := ""
-
-	switch mode {
-	case "view":
-		viewmode = "VIEW_MODE_VIEW_ONLY"
-	case "read":
-		viewmode = "VIEW_MODE_READ_ONLY"
-	case "write":
-		viewmode = "VIEW_MODE_READ_WRITE"
-	case "default":
-		return
-	}
-
-	wt := WopiToken{
-		ViewMode:  viewmode,
-		Token:     token,
-		StorageID: "1284d238-aa92-42ce-bdc4-0b0000009157", // TODO: do not hardcode
-		FolderURL: "",
-		FilePath:  filePath,
-		UserName:  "Einstein", // TODO: get user from context
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Unix() + (60 * 60), // TODO: decide about expiry
-		},
-	}
-
-	swt := jwt.NewWithClaims(jwt.SigningMethodHS256, wt)
-	wopiToken, err := swt.SignedString([]byte(p.config.WopiServer.Secret))
+	tokenManager, err := jwt.New(map[string]interface{}{
+		"secret":  p.config.TokenManager.JWTSecret,
+		"expires": int64(60),
+	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.logger.Err(err)
 		return
 	}
 
-	extensions, err := getExtensions(p.config.WopiServer.Host, p.config.WopiServer.Insecure)
+	user := user.ContextMustGetUser(ctx)
+	scope, err := scope.GetOwnerScope()
+	if err != nil {
+		p.logger.Err(err)
+		return
+	}
+
+	revaToken, err := tokenManager.MintToken(ctx, user, scope)
+	if err != nil {
+		p.logger.Err(err)
+		return
+	}
+
+	statResponse, err := p.stat(filePath, revaToken)
+	if err != nil {
+		p.logger.Err(err)
+		return
+	}
+
+	extensions, err := p.getExtensions()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.logger.Err(err)
@@ -151,24 +151,52 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wopiClientHost := ""
+	viewMode := ""
+	canEdit := statResponse.Info.PermissionSet.InitiateFileUpload
+	canView := statResponse.Info.PermissionSet.InitiateFileDownload
+	isEmpty := statResponse.Info.Size == 0
 
-	switch mode {
-	case "view":
-		wopiClientHost = extensionHandler.ViewURL
-	case "read":
-		wopiClientHost = extensionHandler.ViewURL
-	case "write":
+	if canEdit && canView && isEmpty {
+		wopiClientHost = extensionHandler.NewURL //let WOPI client do the file initialization
+		viewMode = "VIEW_MODE_READ_WRITE"
+	} else if canEdit && canView && !isEmpty {
 		wopiClientHost = extensionHandler.EditURL
-	case "default":
+		viewMode = "VIEW_MODE_READ_WRITE"
+	} else if !canEdit && canView && !isEmpty {
+		wopiClientHost = extensionHandler.ViewURL
+		viewMode = "VIEW_MODE_READ_ONLY"
+		//} else if !canEdit && canView && !isEmpty {
+		//	 TODO: this branch will never be entered
+		//	 permission set is not really useful for this case -> need to use this https://github.com/cs3org/cs3apis/blob/master/cs3/app/provider/v1beta1/provider_api.proto#L79
+		//	wopiClientHost = extensionHandler.ViewURL
+		//	viewMode = "VIEW_MODE_VIEW_ONLY"
+	} else {
 		return
 	}
 
-	res := WopiResponse{
-		WopiAccessToken: wopiToken,
-		WopiClientURL:   wopiClientHost + "?WOPISrc=" + p.config.WopiServer.Host + "/wopi/files/1", // TODO: set URI even if totally unused
+	wopiSrc, err := p.getWopiSrc(
+		statResponse.Info.Id.OpaqueId, viewMode,
+		statResponse.Info.Id.StorageId, folderPath,
+		user.DisplayName, revaToken,
+	)
+	if err != nil {
+		p.logger.Err(err)
+		return
 	}
 
-	js, err := json.Marshal(res)
+	wopiClientURL := wopiClientHost // already includes ?permission=<readonly/edit>
+	wopiClientURL += "&WOPISrc=" + wopiSrc
+	// more options used by oC 10:
+	// &lang=en-GB
+	// &closebutton=1
+	// &revisionhistory=1
+	// &title=Hello.odt
+
+	js, err := json.Marshal(
+		WopiResponse{
+			WopiClientURL: wopiClientURL,
+		},
+	)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.logger.Err(err)
@@ -177,6 +205,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
+
 }
 
 type ExtensionHandler struct {
@@ -185,21 +214,92 @@ type ExtensionHandler struct {
 	NewURL  string `json:"new"`
 }
 
-func getExtensions(wopiServerHost string, insecure bool) (extensions map[string]ExtensionHandler, err error) {
+func (p WopiServer) getExtensions() (extensions map[string]ExtensionHandler, err error) {
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
-	}
-	c := &http.Client{Transport: tr}
-
-	r, err := c.Get(wopiServerHost + "/wopi/cbox/endpoints")
+	r, err := p.httpClient.Get(p.config.WopiServer.Host + "/wopi/cbox/endpoints")
 	if err != nil {
 		return nil, err
 	}
 	defer r.Body.Close()
 
-	extensions = map[string]ExtensionHandler{}
+	if r.StatusCode != http.StatusOK {
+		return nil, errors.New("get /wopi/cbox/endpoints failed: status code != 200")
+	}
 
-	err = json.NewDecoder(r.Body).Decode(&extensions)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	extensions = map[string]ExtensionHandler{}
+	err = json.Unmarshal(body, &extensions)
+	if err != nil {
+		return nil, err
+	}
+
 	return extensions, err
+}
+
+func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName, revaToken string) (resp string, err error) {
+
+	req, err := http.NewRequest("GET", p.config.WopiServer.Host+"/wopi/iop/open", nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Add("authorization", "Bearer "+p.config.WopiServer.Secret)
+	req.Header.Add("TokenHeader", revaToken)
+
+	q := req.URL.Query()
+	q.Add("filename", fileRef) // can be the file path or an opaque ID
+	q.Add("viewmode", viewMode)
+	q.Add("folderurl", folderURL)
+	q.Add("endpoint", storageID)
+	q.Add("username", userName)
+	req.URL.RawQuery = q.Encode()
+
+	r, err := p.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer r.Body.Close()
+
+	if r.StatusCode != http.StatusOK {
+		return "", errors.New("get /wopi/iop/open failed: status code != 200")
+	}
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(b), err
+}
+
+func (p WopiServer) stat(path, auth string) (*provider.StatResponse, error) {
+	ctx := metadata.AppendToOutgoingContext(context.Background(), token.TokenHeader, auth)
+
+	req := &provider.StatRequest{
+		Ref: &provider.Reference{
+			Spec: &provider.Reference_Path{Path: path},
+		},
+	}
+	rsp, err := p.client.Stat(ctx, req)
+	if err != nil {
+		p.logger.Error().Err(err).Str("path", path).Msg("could not stat file")
+		return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", err.Error())
+	}
+
+	if rsp.Status.Code != rpc.Code_CODE_OK {
+		switch rsp.Status.Code {
+		case rpc.Code_CODE_NOT_FOUND:
+			return nil, merrors.NotFound(p.serviceID, "could not stat file: %s", rsp.Status.Message)
+		default:
+			p.logger.Error().Str("status_message", rsp.Status.Message).Str("path", path).Msg("could not stat file")
+			return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", rsp.Status.Message)
+		}
+	}
+	if rsp.Info.Type != provider.ResourceType_RESOURCE_TYPE_FILE {
+		return nil, merrors.BadRequest(p.serviceID, "Unsupported file type")
+	}
+	return rsp, nil
 }
