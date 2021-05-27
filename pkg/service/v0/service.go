@@ -151,17 +151,17 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 
 	wopiClientHost := ""
 	viewMode := ""
-	editPerm := statResponse.Info.PermissionSet.InitiateFileUpload
-	viewPerm := statResponse.Info.PermissionSet.InitiateFileDownload
-	emptyFile := statResponse.Info.Size == 0
+	canEdit := statResponse.Info.PermissionSet.InitiateFileUpload
+	canView := statResponse.Info.PermissionSet.InitiateFileDownload
+	isEmpty := statResponse.Info.Size == 0
 
-	if editPerm && viewPerm && emptyFile {
+	if canEdit && canView && isEmpty {
 		wopiClientHost = extensionHandler.NewURL //let WOPI client do the file initialization
 		viewMode = "VIEW_MODE_READ_WRITE"
-	} else if editPerm && viewPerm && !emptyFile {
+	} else if canEdit && canView && !isEmpty {
 		wopiClientHost = extensionHandler.EditURL
 		viewMode = "VIEW_MODE_READ_WRITE"
-	} else if !editPerm && viewPerm && !emptyFile {
+	} else if !canEdit && canView && !isEmpty {
 		wopiClientHost = extensionHandler.ViewURL
 		viewMode = "VIEW_MODE_READ_ONLY"
 		//} else if !editPerm && viewPerm && !emtpyFile {
