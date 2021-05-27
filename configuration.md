@@ -1,6 +1,6 @@
 ---
 title: "Configuration"
-date: "2021-05-06T12:09:29+0000"
+date: "2021-05-27T10:33:43+0000"
 weight: 20
 geekdocRepo: https://github.com/owncloud/ocis-wopiserver
 geekdocEditPath: edit/main/templates
@@ -127,4 +127,10 @@ Usage: `accounts server [command options] [arguments...]`
 
 -wopi-server-insecure |  $WOPISERVER_WOPI_SERVER_INSECURE
 : Wopiserver insecure. Default: `false`.
+
+-jwt-secret |  $WOPISERVER_JWT_SECRET , $OCIS_JWT_SECRET
+: Used to create JWT to talk to reva, should equal reva's jwt-secret. Default: `flags.OverrideDefaultString(cfg.TokenManager.JWTSecret, "Pive-Fumkiu4")`.
+
+-reva-gateway-addr |  $WOPISERVER_REVA_GATEWAY_ADDR
+: Reva gateway address. Default: `flags.OverrideDefaultString(cfg.WopiServer.RevaGateway, "127.0.0.1:9142")`.
 
