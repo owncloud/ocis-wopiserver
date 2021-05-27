@@ -208,7 +208,7 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			Name:        "reva-gateway-addr",
 			Value:       flags.OverrideDefaultString(cfg.WopiServer.RevaGateway, "127.0.0.1:9142"),
 			Usage:       "Reva gateway address",
-			EnvVars:     []string{"WOPISERVER_REVA_GATEWAY"},
+			EnvVars:     []string{"WOPISERVER_REVA_GATEWAY_ADDR"},
 			Destination: &cfg.WopiServer.RevaGateway,
 		},
 	}

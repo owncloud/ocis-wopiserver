@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
@@ -52,12 +53,12 @@ func NewService(opts ...Option) Service {
 		logger:    options.Logger,
 		config:    options.Config,
 		mux:       m,
-		c: &http.Client{Transport: &http.Transport{
+		httpClient: &http.Client{Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: options.Config.WopiServer.Insecure,
 			},
 		}},
-		cs3Client: options.CS3Client,
+		client: options.CS3Client,
 	}
 
 	m.Route(options.Config.HTTP.Root, func(r chi.Router) {
@@ -72,12 +73,12 @@ func NewService(opts ...Option) Service {
 
 // WopiServer defines implements the business logic for Service.
 type WopiServer struct {
-	serviceID string
-	logger    log.Logger
-	config    *config.Config
-	mux       *chi.Mux
-	c         *http.Client
-	cs3Client gateway.GatewayAPIClient
+	serviceID  string
+	logger     log.Logger
+	config     *config.Config
+	mux        *chi.Mux
+	httpClient *http.Client
+	client     gateway.GatewayAPIClient
 }
 
 // ServeHTTP implements the Service interface.
@@ -164,7 +165,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	} else if !canEdit && canView && !isEmpty {
 		wopiClientHost = extensionHandler.ViewURL
 		viewMode = "VIEW_MODE_READ_ONLY"
-		//} else if !editPerm && viewPerm && !emtpyFile {
+		//} else if !canEdit && canView && !isEmpty {
 		//	 TODO: this branch will never be entered
 		//	 permission set is not really useful for this case -> need to use this https://github.com/cs3org/cs3apis/blob/master/cs3/app/provider/v1beta1/provider_api.proto#L79
 		//	wopiClientHost = extensionHandler.ViewURL
@@ -215,7 +216,7 @@ type ExtensionHandler struct {
 
 func (p WopiServer) getExtensions() (extensions map[string]ExtensionHandler, err error) {
 
-	r, err := p.c.Get(p.config.WopiServer.Host + "/wopi/cbox/endpoints")
+	r, err := p.httpClient.Get(p.config.WopiServer.Host + "/wopi/cbox/endpoints")
 	if err != nil {
 		return nil, err
 	}
@@ -225,15 +226,26 @@ func (p WopiServer) getExtensions() (extensions map[string]ExtensionHandler, err
 		return nil, errors.New("get /wopi/cbox/endpoints failed: status code != 200")
 	}
 
-	extensions = map[string]ExtensionHandler{}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
 
-	err = json.NewDecoder(r.Body).Decode(&extensions)
+	extensions = map[string]ExtensionHandler{}
+	err = json.Unmarshal(body, &extensions)
+	if err != nil {
+		return nil, err
+	}
+
 	return extensions, err
 }
 
-func (p WopiServer) getWopiSrc(fileRef string, viewMode string, storageID string, folderURL string, userName string, revaToken string) (resp string, err error) {
+func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName, revaToken string) (resp string, err error) {
 
 	req, err := http.NewRequest("GET", p.config.WopiServer.Host+"/wopi/iop/open", nil)
+	if err != nil {
+		return "", err
+	}
 
 	req.Header.Add("authorization", "Bearer "+p.config.WopiServer.Secret)
 	req.Header.Add("TokenHeader", revaToken)
@@ -246,7 +258,7 @@ func (p WopiServer) getWopiSrc(fileRef string, viewMode string, storageID string
 	q.Add("username", userName)
 	req.URL.RawQuery = q.Encode()
 
-	r, err := p.c.Do(req)
+	r, err := p.httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -271,7 +283,7 @@ func (p WopiServer) stat(path, auth string) (*provider.StatResponse, error) {
 			Spec: &provider.Reference_Path{Path: path},
 		},
 	}
-	rsp, err := p.cs3Client.Stat(ctx, req)
+	rsp, err := p.client.Stat(ctx, req)
 	if err != nil {
 		p.logger.Error().Err(err).Str("path", path).Msg("could not stat file")
 		return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", err.Error())
