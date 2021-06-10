@@ -177,13 +177,6 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			Destination: &cfg.Asset.Path,
 		},
 		&cli.StringFlag{
-			Name:        "wopi-server-secret",
-			Value:       "Pive-Fumkiu4",
-			Usage:       "Used to create JWT tokens for the WOPI server",
-			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_SECRET"},
-			Destination: &cfg.WopiServer.Secret,
-		},
-		&cli.StringFlag{
 			Name:        "wopi-server-host",
 			Value:       "http://127.0.0.1:8880",
 			Usage:       "Wopiserver Host",

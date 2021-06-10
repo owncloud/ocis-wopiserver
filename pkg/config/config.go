@@ -59,7 +59,6 @@ type TokenManager struct {
 
 type WopiServer struct {
 	Host        string
-	Secret      string
 	Insecure    bool
 	RevaGateway string
 }

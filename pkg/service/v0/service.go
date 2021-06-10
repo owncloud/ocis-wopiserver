@@ -247,7 +247,7 @@ func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName
 		return "", err
 	}
 
-	req.Header.Add("authorization", "Bearer "+p.config.WopiServer.Secret)
+	req.Header.Add("authorization", "Bearer "+p.config.TokenManager.JWTSecret)
 	req.Header.Add("TokenHeader", revaToken)
 
 	q := req.URL.Query()
