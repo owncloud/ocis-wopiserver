@@ -10,14 +10,13 @@ import (
 	"net/http"
 	"path/filepath"
 
+	user "github.com/cs3org/go-cs3apis/cs3/identity/user/v1beta1"
+
 	merrors "github.com/asim/go-micro/v3/errors"
 	gateway "github.com/cs3org/go-cs3apis/cs3/gateway/v1beta1"
 	rpc "github.com/cs3org/go-cs3apis/cs3/rpc/v1beta1"
 	provider "github.com/cs3org/go-cs3apis/cs3/storage/provider/v1beta1"
-	"github.com/cs3org/reva/pkg/auth/scope"
 	"github.com/cs3org/reva/pkg/token"
-	"github.com/cs3org/reva/pkg/token/manager/jwt"
-	"github.com/cs3org/reva/pkg/user"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/owncloud/ocis-wopiserver/pkg/assets"
@@ -25,6 +24,7 @@ import (
 	"github.com/owncloud/ocis/ocis-pkg/log"
 	ocsm "github.com/owncloud/ocis/ocis-pkg/middleware"
 	"google.golang.org/grpc/metadata"
+	"gopkg.in/square/go-jose.v2/jwt"
 )
 
 // Service defines the extension handlers.
@@ -94,8 +94,37 @@ type WopiResponse struct {
 	WopiClientURL string `json:"wopiclienturl"`
 }
 
+type revaClaims struct {
+	User *user.User `json:"user,omitempty"`
+	jwt.Claims
+}
+
 func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+
+	revaToken := r.Header.Get("X-Access-Token") // reva token minted by oCIS Proxy
+	if revaToken == "" {
+		authErr := errors.New("unauthenticated request")
+		http.Error(w, authErr.Error(), http.StatusInternalServerError)
+		p.logger.Err(authErr)
+		return
+	}
+
+	var claims revaClaims
+
+	// decode JWT token without verifying the signature
+	tokenErr := errors.New("request provided malformed access token")
+	token, err := jwt.ParseSigned(revaToken)
+	if err != nil {
+		http.Error(w, tokenErr.Error(), http.StatusInternalServerError)
+		p.logger.Err(tokenErr)
+	}
+	err = token.UnsafeClaimsWithoutVerification(&claims)
+	if err != nil {
+		http.Error(w, tokenErr.Error(), http.StatusInternalServerError)
+		p.logger.Err(tokenErr)
+	}
+
+	username := claims.User.DisplayName
 
 	filePath := r.URL.Query().Get("filePath")
 	if filePath == "" {
@@ -105,28 +134,6 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	folderPath := filepath.Dir(filePath)
-
-	tokenManager, err := jwt.New(map[string]interface{}{
-		"secret":  p.config.TokenManager.JWTSecret,
-		"expires": int64(60),
-	})
-	if err != nil {
-		p.logger.Err(err)
-		return
-	}
-
-	user := user.ContextMustGetUser(ctx)
-	scope, err := scope.GetOwnerScope()
-	if err != nil {
-		p.logger.Err(err)
-		return
-	}
-
-	revaToken, err := tokenManager.MintToken(ctx, user, scope)
-	if err != nil {
-		p.logger.Err(err)
-		return
-	}
 
 	statResponse, err := p.stat(filePath, revaToken)
 	if err != nil {
@@ -177,7 +184,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	wopiSrc, err := p.getWopiSrc(
 		statResponse.Info.Id.OpaqueId, viewMode,
 		statResponse.Info.Id.StorageId, folderPath,
-		user.DisplayName, revaToken,
+		username, revaToken,
 	)
 	if err != nil {
 		p.logger.Err(err)
