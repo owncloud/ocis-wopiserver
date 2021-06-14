@@ -37,7 +37,7 @@ sequenceDiagram
                 oCIS ->> oCIS WOPI server: /api/v0/wopi/open [REVA access token]
                 activate oCIS WOPI server
 
-					oCIS WOPI server ->> oCIS WOPI server: get user from the REVA access <br> token included to the request <br> (unverified JWT parsing, <br> therefore no REVA secret is needed)
+					oCIS WOPI server ->> oCIS WOPI server: mint new REVA user token with specified TTL <br> (default 1h)
 
 					oCIS WOPI server ->> REVA: stat file [REVA access token]
 					activate REVA
@@ -55,8 +55,7 @@ sequenceDiagram
 
                         activate CS3 WOPI server
 
-                            CS3 WOPI server ->> CS3 WOPI server: mints REVA access token for the user
-                            CS3 WOPI server ->> CS3 WOPI server: mints CS3 WOPI server access token <br> containing the REVA access token for the user <br> minted in the previous step
+                            CS3 WOPI server ->> CS3 WOPI server: mints CS3 WOPI server access token <br> embeds the REVA access token of the user
                         deactivate CS3 WOPI server
 
                         CS3 WOPI server -->> oCIS WOPI server: Collabora URL, CS3 WOPI server token

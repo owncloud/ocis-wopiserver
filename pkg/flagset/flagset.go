@@ -1,6 +1,8 @@
 package flagset
 
 import (
+	"time"
+
 	"github.com/micro/cli/v2"
 	"github.com/owncloud/ocis-wopiserver/pkg/config"
 	"github.com/owncloud/ocis/ocis-pkg/flags"
@@ -189,6 +191,13 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			Usage:       "Wopiserver insecure",
 			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_INSECURE"},
 			Destination: &cfg.WopiServer.Insecure,
+		},
+		&cli.DurationFlag{
+			Name:        "wopi-server-token-ttl",
+			Value:       (1 * time.Hour),
+			Usage:       "TTL of issued tokens",
+			EnvVars:     []string{"WOPISERVER_TOKEN_TTL"},
+			Destination: &cfg.WopiServer.TokenTTL,
 		},
 		&cli.StringFlag{
 			Name:        "jwt-secret",

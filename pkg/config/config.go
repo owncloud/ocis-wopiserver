@@ -1,6 +1,9 @@
 package config
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Log defines the available logging configuration.
 type Log struct {
@@ -61,6 +64,7 @@ type WopiServer struct {
 	Host        string
 	Insecure    bool
 	RevaGateway string
+	TokenTTL    time.Duration
 }
 
 // Config combines all available configuration parts.
