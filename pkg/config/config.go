@@ -58,13 +58,14 @@ type Asset struct {
 // TokenManager is the config for using the reva token manager
 type TokenManager struct {
 	JWTSecret string
+	TokenTTL  time.Duration
 }
 
 type WopiServer struct {
 	Host        string
 	Insecure    bool
 	RevaGateway string
-	TokenTTL    time.Duration
+	IOPSecret   string
 }
 
 // Config combines all available configuration parts.

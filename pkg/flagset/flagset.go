@@ -192,13 +192,21 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_INSECURE"},
 			Destination: &cfg.WopiServer.Insecure,
 		},
+		&cli.StringFlag{
+			Name:        "wopi-server-iop-secret",
+			Value:       "",
+			Usage:       "shared IOP secret for CS3 WOPI server",
+			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_IOP_SECRET"},
+			Destination: &cfg.WopiServer.IOPSecret,
+		},
 		&cli.DurationFlag{
 			Name:        "wopi-server-token-ttl",
 			Value:       (1 * time.Hour),
 			Usage:       "TTL of issued tokens",
 			EnvVars:     []string{"WOPISERVER_TOKEN_TTL"},
-			Destination: &cfg.WopiServer.TokenTTL,
+			Destination: &cfg.TokenManager.TokenTTL,
 		},
+
 		&cli.StringFlag{
 			Name:        "jwt-secret",
 			Value:       flags.OverrideDefaultString(cfg.TokenManager.JWTSecret, "Pive-Fumkiu4"),

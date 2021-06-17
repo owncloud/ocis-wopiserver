@@ -101,7 +101,7 @@ type WopiResponse struct {
 
 func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 
-	username, revaToken, err := getUserAndAuthToken(r, p.config.TokenManager.JWTSecret, p.config.WopiServer.TokenTTL)
+	username, revaToken, err := getUserAndAuthToken(r, p.config.TokenManager)
 	if err != nil {
 		p.logger.Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -196,7 +196,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 			WopiClientURL: u.String(),
 			AccessToken:   accessToken,
 			// https://wopi.readthedocs.io/projects/wopirest/en/latest/concepts.html#term-access-token-ttl
-			AccessTokenTTL: time.Now().Add(p.config.WopiServer.TokenTTL).UnixNano() / 1e6,
+			AccessTokenTTL: time.Now().Add(p.config.TokenManager.TokenTTL).UnixNano() / 1e6,
 		},
 	)
 	if err != nil {
@@ -249,7 +249,7 @@ func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName
 		return "", "", err
 	}
 
-	req.Header.Add("authorization", "Bearer "+p.config.TokenManager.JWTSecret)
+	req.Header.Add("authorization", "Bearer "+p.config.WopiServer.IOPSecret)
 	req.Header.Add("TokenHeader", revaToken)
 
 	q := req.URL.Query()
@@ -317,13 +317,13 @@ func (p WopiServer) stat(path, auth string) (*provider.StatResponse, error) {
 	return rsp, nil
 }
 
-func getUserAndAuthToken(r *http.Request, jwtSecret string, tokenTTL time.Duration) (username, revaToken string, err error) {
+func getUserAndAuthToken(r *http.Request, tm config.TokenManager) (username, revaToken string, err error) {
 
 	ctx := r.Context()
 
 	tokenManager, err := revajwt.New(map[string]interface{}{
-		"secret":  jwtSecret,
-		"expires": tokenTTL.Seconds(),
+		"secret":  tm.JWTSecret,
+		"expires": tm.TokenTTL.Seconds(),
 	})
 	if err != nil {
 		return "", "", err

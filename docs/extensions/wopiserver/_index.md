@@ -49,9 +49,8 @@ sequenceDiagram
 					deactivate CS3 WOPI server
 
 
-                    oCIS WOPI server ->> CS3 WOPI server: /wopi/iop/open [REVA JWT secret, REVA access token]
+                    oCIS WOPI server ->> CS3 WOPI server: /wopi/iop/open [CS3 WOPI shared IOP secret] (REVA access token is contained in payload)
 					activate CS3 WOPI server
-					Note right of oCIS WOPI server: no REVA JWT secret should be passed here
 
                         activate CS3 WOPI server
 
