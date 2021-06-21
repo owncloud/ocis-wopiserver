@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
-	"strings"
 	"time"
 
 	merrors "github.com/asim/go-micro/v3/errors"
@@ -164,7 +163,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wopiSrc, accessToken, err := p.getWopiSrc(
+	wopiSrc, err := p.getWopiSrc(
 		statResponse.Info.Id.OpaqueId, viewMode,
 		statResponse.Info.Id.StorageId, folderPath,
 		username, revaToken,
@@ -175,7 +174,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := url.Parse(wopiClientHost)
+	u, err := url.Parse(wopiClientHost + "&WOPISrc=" + wopiSrc)
 	if err != nil {
 		p.logger.Err(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -183,7 +182,11 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := u.Query()
-	q.Add("WOPISrc", wopiSrc)
+
+	// remove access token from query parameters
+	accessToken := q.Get("access_token")
+	q.Del("access_token")
+
 	// more options used by oC 10:
 	// &lang=en-GB
 	// &closebutton=1
@@ -242,11 +245,11 @@ func (p WopiServer) getExtensions() (extensions map[string]ExtensionHandler, err
 	return extensions, err
 }
 
-func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName, revaToken string) (wopiSrc, accessToken string, err error) {
+func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName, revaToken string) (b string, err error) {
 
 	req, err := http.NewRequest("GET", p.config.WopiServer.Host+"/wopi/iop/open", nil)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	req.Header.Add("authorization", "Bearer "+p.config.WopiServer.IOPSecret)
@@ -262,30 +265,20 @@ func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName
 
 	r, err := p.httpClient.Do(req)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	defer r.Body.Close()
 
 	if r.StatusCode != http.StatusOK {
-		return "", "", errors.New("get /wopi/iop/open failed: status code != 200")
+		return "", errors.New("get /wopi/iop/open failed: status code != 200")
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
-	path, err := url.PathUnescape(string(b))
-	if err != nil {
-		return "", "", errors.New("unescape failed")
-	}
-
-	parts := strings.Split(path, "&access_token=")
-
-	wopiSrc = parts[0]
-	accessToken = parts[1]
-
-	return wopiSrc, accessToken, err
+	return string(body), err
 }
 
 func (p WopiServer) stat(path, auth string) (*provider.StatResponse, error) {
