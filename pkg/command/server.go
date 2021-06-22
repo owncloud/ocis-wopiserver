@@ -100,10 +100,23 @@ func Server(cfg *config.Config) *cli.Command {
 					return err
 				}
 
-				gr.Add(server.ListenAndServe, func(_ error) {
-					_ = server.Shutdown(ctx)
+				gr.Add(func() error {
+					err := server.ListenAndServe()
+					if err != nil {
+						logger.Error().
+							Err(err).
+							Str("transport", "http").
+							Msg("Failed to start debug server")
+					}
+					return err
+				}, func(_ error) {
+					logger.Info().
+						Str("transport", "http").
+						Msg("Shutting down server")
+
 					cancel()
 				})
+
 			}
 
 			if !cfg.Supervised {
