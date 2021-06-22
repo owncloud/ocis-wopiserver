@@ -3,6 +3,7 @@ package svc
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -10,7 +11,9 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	merrors "github.com/asim/go-micro/v3/errors"
 	gateway "github.com/cs3org/go-cs3apis/cs3/gateway/v1beta1"
@@ -107,17 +110,15 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filePath := r.URL.Query().Get("filePath")
-	if filePath == "" {
-		pathErr := errors.New("filePath parameter missing in request")
+	fileID := r.URL.Query().Get("fileId")
+	if fileID == "" {
+		pathErr := errors.New("fileID parameter missing in request")
 		p.logger.Err(pathErr)
 		http.Error(w, pathErr.Error(), http.StatusBadRequest)
 		return
 	}
 
-	folderPath := filepath.Dir(filePath)
-
-	statResponse, err := p.stat(filePath, revaToken)
+	statResponse, err := p.stat(fileID, revaToken)
 	if err != nil {
 		p.logger.Err(err)
 		http.Error(w, "could not stat file", http.StatusBadRequest)
@@ -131,9 +132,9 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	extensionHandler, found := extensions[filepath.Ext(filePath)]
+	extensionHandler, found := extensions[filepath.Ext(statResponse.Info.Path)]
 	if !found {
-		err = errors.New("file type " + filepath.Ext(filePath) + " is not supported")
+		err = errors.New("file type " + filepath.Ext(statResponse.Info.Path) + " is not supported")
 		p.logger.Err(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -165,7 +166,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 
 	wopiSrc, err := p.getWopiSrc(
 		statResponse.Info.Id.OpaqueId, viewMode,
-		statResponse.Info.Id.StorageId, folderPath,
+		statResponse.Info.Id.StorageId, filepath.Dir(statResponse.Info.Path),
 		username, revaToken,
 	)
 	if err != nil {
@@ -281,17 +282,46 @@ func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName
 	return string(body), err
 }
 
-func (p WopiServer) stat(path, auth string) (*provider.StatResponse, error) {
+func (p WopiServer) stat(fileID, auth string) (*provider.StatResponse, error) {
 	ctx := metadata.AppendToOutgoingContext(context.Background(), token.TokenHeader, auth)
+
+	// taken from reva - ocdav
+	unwrap := func(rid string) *provider.ResourceId {
+		decodedID, err := base64.URLEncoding.DecodeString(rid)
+		if err != nil {
+			return nil
+		}
+
+		parts := strings.SplitN(string(decodedID), ":", 2)
+		if len(parts) != 2 {
+			return nil
+		}
+
+		if !utf8.ValidString(parts[0]) || !utf8.ValidString(parts[1]) {
+			return nil
+		}
+
+		return &provider.ResourceId{
+			StorageId: parts[0],
+			OpaqueId:  parts[1],
+		}
+	}
+
+	resourceID := unwrap(fileID)
+	if resourceID == nil {
+		return nil, errors.New("unwrap fileID failed")
+	}
 
 	req := &provider.StatRequest{
 		Ref: &provider.Reference{
-			Spec: &provider.Reference_Path{Path: path},
+			Spec: &provider.Reference_Id{
+				Id: resourceID,
+			},
 		},
 	}
 	rsp, err := p.client.Stat(ctx, req)
 	if err != nil {
-		p.logger.Error().Err(err).Str("path", path).Msg("could not stat file")
+		p.logger.Error().Err(err).Str("fileID", fileID).Msg("could not stat file")
 		return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", err.Error())
 	}
 
@@ -300,7 +330,7 @@ func (p WopiServer) stat(path, auth string) (*provider.StatResponse, error) {
 		case rpc.Code_CODE_NOT_FOUND:
 			return nil, merrors.NotFound(p.serviceID, "could not stat file: %s", rsp.Status.Message)
 		default:
-			p.logger.Error().Str("status_message", rsp.Status.Message).Str("path", path).Msg("could not stat file")
+			p.logger.Error().Str("status_message", rsp.Status.Message).Str("fileID", fileID).Msg("could not stat file")
 			return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", rsp.Status.Message)
 		}
 	}
