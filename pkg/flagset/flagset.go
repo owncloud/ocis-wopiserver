@@ -149,25 +149,11 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			Destination: &cfg.HTTP.CacheTTL,
 		},
 		&cli.StringFlag{
-			Name:        "grpc-namespace",
-			Value:       "com.owncloud.api",
-			Usage:       "Set the base namespace for the grpc namespace",
-			EnvVars:     []string{"WOPISERVER_GRPC_NAMESPACE"},
-			Destination: &cfg.GRPC.Namespace,
-		},
-		&cli.StringFlag{
 			Name:        "name",
 			Value:       flags.OverrideDefaultString(cfg.Server.Name, "wopiserver"),
 			Usage:       "service name",
 			EnvVars:     []string{"WOPISERVER_NAME"},
 			Destination: &cfg.Server.Name,
-		},
-		&cli.StringFlag{
-			Name:        "grpc-addr",
-			Value:       "0.0.0.0:9106",
-			Usage:       "Address to bind grpc server",
-			EnvVars:     []string{"WOPISERVER_GRPC_ADDR"},
-			Destination: &cfg.GRPC.Addr,
 		},
 		&cli.StringFlag{
 			Name:        "asset-path",
