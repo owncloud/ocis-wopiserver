@@ -81,7 +81,7 @@ function getExtension (openMode, fileExtension) {
         return config
       })
       const tokenUrl = window.Vue.$store.getters['Wopi/getServerForJsClient'] + '/api/v0/wopi/open'
-      axios.get(tokenUrl, { params: { filePath: '/home' + filePath, fileId: fileId } })
+      axios.get(tokenUrl, { params: { fileId: fileId } })
         .then(response => {
           var form = document.createElement('form')
           form.setAttribute('method', 'POST')
