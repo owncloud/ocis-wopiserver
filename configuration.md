@@ -1,6 +1,6 @@
 ---
 title: "Configuration"
-date: "2021-05-27T10:33:43+0000"
+date: "2021-06-23T07:59:17+0000"
 weight: 20
 geekdocRepo: https://github.com/owncloud/ocis-wopiserver
 geekdocEditPath: edit/main/templates
@@ -107,14 +107,8 @@ Usage: `accounts server [command options] [arguments...]`
 -http-root |  $WOPISERVER_HTTP_ROOT
 : Root path of http server. Default: `/`.
 
--grpc-namespace |  $WOPISERVER_GRPC_NAMESPACE
-: Set the base namespace for the grpc namespace. Default: `com.owncloud.api`.
-
 -name |  $WOPISERVER_NAME
 : service name. Default: `flags.OverrideDefaultString(cfg.Server.Name, "wopiserver")`.
-
--grpc-addr |  $WOPISERVER_GRPC_ADDR
-: Address to bind grpc server. Default: `0.0.0.0:9106`.
 
 -asset-path |  $WOPISERVER_ASSET_PATH
 : Path to custom assets.
