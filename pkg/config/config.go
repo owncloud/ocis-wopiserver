@@ -70,7 +70,6 @@ type Config struct {
 	Log          Log
 	Debug        Debug
 	HTTP         HTTP
-	GRPC         GRPC
 	Server       Server
 	Tracing      Tracing
 	Asset        Asset
