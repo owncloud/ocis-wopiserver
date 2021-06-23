@@ -22,6 +22,7 @@ require (
 	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
 	google.golang.org/genproto v0.0.0-20210413151531-c14fb6ef47c3 // indirect
 	google.golang.org/grpc v1.37.0
+	gopkg.in/square/go-jose.v2 v2.5.1
 )
 
 replace (

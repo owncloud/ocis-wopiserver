@@ -8,7 +8,9 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path/filepath"
+	"time"
 
 	merrors "github.com/asim/go-micro/v3/errors"
 	gateway "github.com/cs3org/go-cs3apis/cs3/gateway/v1beta1"
@@ -16,8 +18,8 @@ import (
 	provider "github.com/cs3org/go-cs3apis/cs3/storage/provider/v1beta1"
 	"github.com/cs3org/reva/pkg/auth/scope"
 	"github.com/cs3org/reva/pkg/token"
-	"github.com/cs3org/reva/pkg/token/manager/jwt"
-	"github.com/cs3org/reva/pkg/user"
+	revajwt "github.com/cs3org/reva/pkg/token/manager/jwt"
+	revauser "github.com/cs3org/reva/pkg/user"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/owncloud/ocis-wopiserver/pkg/assets"
@@ -91,62 +93,49 @@ func (p WopiServer) NotFound(w http.ResponseWriter, r *http.Request) {
 }
 
 type WopiResponse struct {
-	WopiClientURL string `json:"wopiclienturl"`
+	WopiClientURL  string `json:"wopiclienturl"`
+	AccessToken    string `json:"accesstoken"`
+	AccessTokenTTL int64  `json:"accesstokenttl"`
 }
 
 func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+
+	username, revaToken, err := getUserAndAuthToken(r, p.config.TokenManager)
+	if err != nil {
+		p.logger.Err(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	filePath := r.URL.Query().Get("filePath")
 	if filePath == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		p.logger.Err(errors.New("filePath parameter missing in request"))
+		pathErr := errors.New("filePath parameter missing in request")
+		p.logger.Err(pathErr)
+		http.Error(w, pathErr.Error(), http.StatusBadRequest)
 		return
 	}
 
 	folderPath := filepath.Dir(filePath)
 
-	tokenManager, err := jwt.New(map[string]interface{}{
-		"secret":  p.config.TokenManager.JWTSecret,
-		"expires": int64(60),
-	})
-	if err != nil {
-		p.logger.Err(err)
-		return
-	}
-
-	user := user.ContextMustGetUser(ctx)
-	scope, err := scope.GetOwnerScope()
-	if err != nil {
-		p.logger.Err(err)
-		return
-	}
-
-	revaToken, err := tokenManager.MintToken(ctx, user, scope)
-	if err != nil {
-		p.logger.Err(err)
-		return
-	}
-
 	statResponse, err := p.stat(filePath, revaToken)
 	if err != nil {
 		p.logger.Err(err)
+		http.Error(w, "could not stat file", http.StatusBadRequest)
 		return
 	}
 
 	extensions, err := p.getExtensions()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.logger.Err(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	extensionHandler, found := extensions[filepath.Ext(filePath)]
-
 	if !found {
 		err = errors.New("file type " + filepath.Ext(filePath) + " is not supported")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.logger.Err(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -177,29 +166,45 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	wopiSrc, err := p.getWopiSrc(
 		statResponse.Info.Id.OpaqueId, viewMode,
 		statResponse.Info.Id.StorageId, folderPath,
-		user.DisplayName, revaToken,
+		username, revaToken,
 	)
 	if err != nil {
 		p.logger.Err(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	wopiClientURL := wopiClientHost // already includes ?permission=<readonly/edit>
-	wopiClientURL += "&WOPISrc=" + wopiSrc
+	u, err := url.Parse(wopiClientHost + "&WOPISrc=" + wopiSrc)
+	if err != nil {
+		p.logger.Err(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	q := u.Query()
+
+	// remove access token from query parameters
+	accessToken := q.Get("access_token")
+	q.Del("access_token")
+
 	// more options used by oC 10:
 	// &lang=en-GB
 	// &closebutton=1
 	// &revisionhistory=1
 	// &title=Hello.odt
+	u.RawQuery = q.Encode()
 
 	js, err := json.Marshal(
 		WopiResponse{
-			WopiClientURL: wopiClientURL,
+			WopiClientURL: u.String(),
+			AccessToken:   accessToken,
+			// https://wopi.readthedocs.io/projects/wopirest/en/latest/concepts.html#term-access-token-ttl
+			AccessTokenTTL: time.Now().Add(p.config.TokenManager.TokenTTL).UnixNano() / 1e6,
 		},
 	)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 		p.logger.Err(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -240,14 +245,14 @@ func (p WopiServer) getExtensions() (extensions map[string]ExtensionHandler, err
 	return extensions, err
 }
 
-func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName, revaToken string) (resp string, err error) {
+func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName, revaToken string) (b string, err error) {
 
 	req, err := http.NewRequest("GET", p.config.WopiServer.Host+"/wopi/iop/open", nil)
 	if err != nil {
 		return "", err
 	}
 
-	req.Header.Add("authorization", "Bearer "+p.config.WopiServer.Secret)
+	req.Header.Add("authorization", "Bearer "+p.config.WopiServer.IOPSecret)
 	req.Header.Add("TokenHeader", revaToken)
 
 	q := req.URL.Query()
@@ -268,11 +273,12 @@ func (p WopiServer) getWopiSrc(fileRef, viewMode, storageID, folderURL, userName
 		return "", errors.New("get /wopi/iop/open failed: status code != 200")
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return "", err
 	}
-	return string(b), err
+
+	return string(body), err
 }
 
 func (p WopiServer) stat(path, auth string) (*provider.StatResponse, error) {
@@ -302,4 +308,60 @@ func (p WopiServer) stat(path, auth string) (*provider.StatResponse, error) {
 		return nil, merrors.BadRequest(p.serviceID, "Unsupported file type")
 	}
 	return rsp, nil
+}
+
+func getUserAndAuthToken(r *http.Request, tm config.TokenManager) (username, revaToken string, err error) {
+
+	ctx := r.Context()
+
+	tokenManager, err := revajwt.New(map[string]interface{}{
+		"secret":  tm.JWTSecret,
+		"expires": tm.TokenTTL.Seconds(),
+	})
+	if err != nil {
+		return "", "", err
+	}
+
+	user := revauser.ContextMustGetUser(ctx)
+	scope, err := scope.GetOwnerScope()
+	if err != nil {
+		return "", "", err
+	}
+
+	revaToken, err = tokenManager.MintToken(ctx, user, scope)
+	if err != nil {
+		return "", "", err
+	}
+
+	username = user.DisplayName
+
+	// TODO: if CS3org WOPI server mints the final REVA JWT secret,
+	// the temporary REVA JWT token and the user display name can also be obtained like that:
+	//
+	//revaToken = r.Header.Get("X-Access-Token") // reva token minted by oCIS Proxy
+	//if revaToken == "" {
+	//	return "", "", errors.New("unauthenticated request")
+	//}
+	//
+	//type revaClaims struct {
+	//	User *user.User `json:"user,omitempty"`
+	//	jwt.Claims
+	//}
+	//
+	//var claims revaClaims
+	//
+	////decode JWT token without verifying the signature
+	//tokenErr := errors.New("request provided malformed access token")
+	//token, err := jwt.ParseSigned(revaToken)
+	//if err != nil {
+	//	return "", "", tokenErr
+	//}
+	//err = token.UnsafeClaimsWithoutVerification(&claims)
+	//if err != nil {
+	//	return "", "", tokenErr
+	//}
+	//
+	//username = claims.User.DisplayName
+
+	return username, revaToken, nil
 }

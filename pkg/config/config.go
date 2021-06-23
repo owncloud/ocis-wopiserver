@@ -1,6 +1,9 @@
 package config
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Log defines the available logging configuration.
 type Log struct {
@@ -55,13 +58,14 @@ type Asset struct {
 // TokenManager is the config for using the reva token manager
 type TokenManager struct {
 	JWTSecret string
+	TokenTTL  time.Duration
 }
 
 type WopiServer struct {
 	Host        string
-	Secret      string
 	Insecure    bool
 	RevaGateway string
+	IOPSecret   string
 }
 
 // Config combines all available configuration parts.
