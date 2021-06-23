@@ -1,6 +1,6 @@
 ---
 title: "Configuration"
-date: "2021-06-23T07:59:17+0000"
+date: "2021-06-23T08:23:29+0000"
 weight: 20
 geekdocRepo: https://github.com/owncloud/ocis-wopiserver
 geekdocEditPath: edit/main/templates
@@ -113,14 +113,14 @@ Usage: `accounts server [command options] [arguments...]`
 -asset-path |  $WOPISERVER_ASSET_PATH
 : Path to custom assets.
 
--wopi-server-secret |  $WOPISERVER_WOPI_SERVER_SECRET
-: Used to create JWT tokens for the WOPI server. Default: `Pive-Fumkiu4`.
-
 -wopi-server-host |  $WOPISERVER_WOPI_SERVER_HOST
 : Wopiserver Host. Default: `http://127.0.0.1:8880`.
 
 -wopi-server-insecure |  $WOPISERVER_WOPI_SERVER_INSECURE
 : Wopiserver insecure. Default: `false`.
+
+-wopi-server-iop-secret |  $WOPISERVER_WOPI_SERVER_IOP_SECRET
+: shared IOP secret for CS3 WOPI server.
 
 -jwt-secret |  $WOPISERVER_JWT_SECRET , $OCIS_JWT_SECRET
 : Used to create JWT to talk to reva, should equal reva's jwt-secret. Default: `flags.OverrideDefaultString(cfg.TokenManager.JWTSecret, "Pive-Fumkiu4")`.
