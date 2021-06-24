@@ -333,7 +333,7 @@ func (p WopiServer) stat(fileID, auth string) (*provider.StatResponse, error) {
 			return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", rsp.Status.Message)
 		}
 	}
-	if rsp.Info.Type != provider.ResourceType_RESOURCE_TYPE_CONTAINER {
+	if rsp.Info.Type != provider.ResourceType_RESOURCE_TYPE_FILE {
 		return nil, merrors.BadRequest(p.serviceID, "Unsupported file type")
 	}
 	return rsp, nil
