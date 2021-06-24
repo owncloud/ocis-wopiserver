@@ -105,7 +105,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 
 	username, revaToken, err := getUserAndAuthToken(r, p.config.TokenManager)
 	if err != nil {
-		p.logger.Err(err)
+		p.logger.Logger.Err(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -113,21 +113,21 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	fileID := r.URL.Query().Get("fileId")
 	if fileID == "" {
 		pathErr := errors.New("fileID parameter missing in request")
-		p.logger.Err(pathErr)
+		p.logger.Logger.Err(pathErr)
 		http.Error(w, pathErr.Error(), http.StatusBadRequest)
 		return
 	}
 
 	statResponse, err := p.stat(fileID, revaToken)
 	if err != nil {
-		p.logger.Err(err)
+		p.logger.Logger.Err(err)
 		http.Error(w, "could not stat file", http.StatusBadRequest)
 		return
 	}
 
 	extensions, err := p.getExtensions()
 	if err != nil {
-		p.logger.Err(err)
+		p.logger.Logger.Err(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -135,7 +135,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 	extensionHandler, found := extensions[filepath.Ext(statResponse.Info.Path)]
 	if !found {
 		err = errors.New("file type " + filepath.Ext(statResponse.Info.Path) + " is not supported")
-		p.logger.Err(err)
+		p.logger.Logger.Err(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -170,14 +170,14 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		username, revaToken,
 	)
 	if err != nil {
-		p.logger.Err(err)
+		p.logger.Logger.Err(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	u, err := url.Parse(wopiClientHost + "&WOPISrc=" + wopiSrc)
 	if err != nil {
-		p.logger.Err(err)
+		p.logger.Logger.Err(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -204,7 +204,7 @@ func (p WopiServer) OpenFile(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 	if err != nil {
-		p.logger.Err(err)
+		p.logger.Logger.Err(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -313,15 +313,14 @@ func (p WopiServer) stat(fileID, auth string) (*provider.StatResponse, error) {
 	}
 
 	req := &provider.StatRequest{
+
 		Ref: &provider.Reference{
-			Spec: &provider.Reference_Id{
-				Id: resourceID,
-			},
+			ResourceId: resourceID,
 		},
 	}
 	rsp, err := p.client.Stat(ctx, req)
 	if err != nil {
-		p.logger.Error().Err(err).Str("fileID", fileID).Msg("could not stat file")
+		p.logger.Logger.Error().Err(err).Str("fileID", fileID).Msg("could not stat file")
 		return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", err.Error())
 	}
 
@@ -330,11 +329,11 @@ func (p WopiServer) stat(fileID, auth string) (*provider.StatResponse, error) {
 		case rpc.Code_CODE_NOT_FOUND:
 			return nil, merrors.NotFound(p.serviceID, "could not stat file: %s", rsp.Status.Message)
 		default:
-			p.logger.Error().Str("status_message", rsp.Status.Message).Str("fileID", fileID).Msg("could not stat file")
+			p.logger.Logger.Error().Str("status_message", rsp.Status.Message).Str("fileID", fileID).Msg("could not stat file")
 			return nil, merrors.InternalServerError(p.serviceID, "could not stat file: %s", rsp.Status.Message)
 		}
 	}
-	if rsp.Info.Type != provider.ResourceType_RESOURCE_TYPE_FILE {
+	if rsp.Info.Type != provider.ResourceType_RESOURCE_TYPE_CONTAINER {
 		return nil, merrors.BadRequest(p.serviceID, "Unsupported file type")
 	}
 	return rsp, nil
