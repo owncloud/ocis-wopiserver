@@ -1,8 +1,6 @@
 package flagset
 
 import (
-	"time"
-
 	"github.com/micro/cli/v2"
 	"github.com/owncloud/ocis-wopiserver/pkg/config"
 	"github.com/owncloud/ocis/ocis-pkg/flags"
@@ -184,21 +182,6 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			Usage:       "shared IOP secret for CS3 WOPI server",
 			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_IOP_SECRET"},
 			Destination: &cfg.WopiServer.IOPSecret,
-		},
-		&cli.DurationFlag{
-			Name:        "wopi-server-token-ttl",
-			Value:       (1 * time.Hour),
-			Usage:       "TTL of issued tokens",
-			EnvVars:     []string{"WOPISERVER_TOKEN_TTL"},
-			Destination: &cfg.TokenManager.TokenTTL,
-		},
-
-		&cli.StringFlag{
-			Name:        "jwt-secret",
-			Value:       flags.OverrideDefaultString(cfg.TokenManager.JWTSecret, "Pive-Fumkiu4"),
-			Usage:       "Used to create JWT to talk to reva, should equal reva's jwt-secret",
-			EnvVars:     []string{"WOPISERVER_JWT_SECRET", "OCIS_JWT_SECRET"},
-			Destination: &cfg.TokenManager.JWTSecret,
 		},
 		&cli.StringFlag{
 			Name:        "reva-gateway-addr",

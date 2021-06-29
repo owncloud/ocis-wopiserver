@@ -70,14 +70,13 @@ type WopiServer struct {
 
 // Config combines all available configuration parts.
 type Config struct {
-	File         string
-	Log          Log
-	Debug        Debug
-	HTTP         HTTP
-	Server       Server
-	Tracing      Tracing
-	Asset        Asset
-	TokenManager TokenManager
+	File    string
+	Log     Log
+	Debug   Debug
+	HTTP    HTTP
+	Server  Server
+	Tracing Tracing
+	Asset   Asset
 
 	WopiServer WopiServer
 
