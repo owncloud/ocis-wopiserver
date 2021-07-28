@@ -7,8 +7,8 @@ require (
 	contrib.go.opencensus.io/exporter/ocagent v0.7.0
 	contrib.go.opencensus.io/exporter/zipkin v0.1.2
 	github.com/asim/go-micro/v3 v3.5.1-0.20210217182006-0f0ace1a44a9
-	github.com/cs3org/go-cs3apis v0.0.0-20210614143420-5ee2eb1e7887
-	github.com/cs3org/reva v1.9.0
+	github.com/cs3org/go-cs3apis v0.0.0-20210726064751-4e567a2c8df1
+	github.com/cs3org/reva v1.10.1-0.20210727125927-b7d9958e098e
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
@@ -17,11 +17,12 @@ require (
 	github.com/openzipkin/zipkin-go v0.2.5
 	github.com/owncloud/ocis/ocis-pkg v0.0.0-20210519113029-34a8ed381620
 	github.com/prometheus/client_golang v1.10.0
+	github.com/spf13/cast v1.3.2-0.20200723214538-8d17101741c8 // indirect
 	github.com/spf13/viper v1.7.1
 	go.opencensus.io v0.23.0
-	golang.org/x/net v0.0.0-20210428140749-89ef3d95e781
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 	google.golang.org/genproto v0.0.0-20210413151531-c14fb6ef47c3 // indirect
-	google.golang.org/grpc v1.38.0
+	google.golang.org/grpc v1.39.0
 	gopkg.in/square/go-jose.v2 v2.5.1
 )
 
