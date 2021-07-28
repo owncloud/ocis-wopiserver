@@ -163,27 +163,6 @@ func ServerWithConfig(cfg *config.Config) []cli.Flag {
 			Destination: &cfg.Asset.Path,
 		},
 		&cli.StringFlag{
-			Name:        "wopi-server-host",
-			Value:       "http://127.0.0.1:8880",
-			Usage:       "Wopiserver Host",
-			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_HOST"},
-			Destination: &cfg.WopiServer.Host,
-		},
-		&cli.BoolFlag{
-			Name:        "wopi-server-insecure",
-			Value:       false,
-			Usage:       "Wopiserver insecure",
-			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_INSECURE"},
-			Destination: &cfg.WopiServer.Insecure,
-		},
-		&cli.StringFlag{
-			Name:        "wopi-server-iop-secret",
-			Value:       "",
-			Usage:       "shared IOP secret for CS3 WOPI server",
-			EnvVars:     []string{"WOPISERVER_WOPI_SERVER_IOP_SECRET"},
-			Destination: &cfg.WopiServer.IOPSecret,
-		},
-		&cli.StringFlag{
 			Name:        "reva-gateway-addr",
 			Value:       flags.OverrideDefaultString(cfg.WopiServer.RevaGateway, "127.0.0.1:9142"),
 			Usage:       "Reva gateway address",

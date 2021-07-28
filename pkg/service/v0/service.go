@@ -2,7 +2,6 @@ package svc
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -51,12 +50,7 @@ func NewService(opts ...Option) Service {
 		logger:    options.Logger,
 		config:    options.Config,
 		mux:       m,
-		httpClient: &http.Client{Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: options.Config.WopiServer.Insecure,
-			},
-		}},
-		client: options.CS3Client,
+		client:    options.CS3Client,
 	}
 
 	m.Route(options.Config.HTTP.Root, func(r chi.Router) {
@@ -71,12 +65,11 @@ func NewService(opts ...Option) Service {
 
 // WopiServer defines implements the business logic for Service.
 type WopiServer struct {
-	serviceID  string
-	logger     log.Logger
-	config     *config.Config
-	mux        *chi.Mux
-	httpClient *http.Client
-	client     gateway.GatewayAPIClient
+	serviceID string
+	logger    log.Logger
+	config    *config.Config
+	mux       *chi.Mux
+	client    gateway.GatewayAPIClient
 }
 
 // ServeHTTP implements the Service interface.
