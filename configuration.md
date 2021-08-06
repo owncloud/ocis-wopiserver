@@ -1,6 +1,6 @@
 ---
 title: "Configuration"
-date: "2021-07-01T16:14:13+0000"
+date: "2021-08-06T10:55:04+0000"
 weight: 20
 geekdocRepo: https://github.com/owncloud/ocis-wopiserver
 geekdocEditPath: edit/main/templates
@@ -35,51 +35,6 @@ If multiple variables are listed for one option, they are in order of precedence
 ### Commandline flags
 
 If you prefer to configure the service with commandline flags you can see the available variables below. Command line flags are only working when calling the subcommand directly.
-
-### accounts wopiserver
-
-wopiserver, an example oCIS extension
-
-Usage: `accounts wopiserver [command options] [arguments...]`
-
-
--config-file |  $WOPISERVER_CONFIG_FILE
-: Path to config file.
-
-
--log-level |  $WOPISERVER_LOG_LEVEL , $OCIS_LOG_LEVEL
-: Set logging level. Default: `info`.
-
-
--log-pretty |  $WOPISERVER_LOG_PRETTY , $OCIS_LOG_PRETTY
-: Enable pretty logging.
-
-
--log-color |  $WOPISERVER_LOG_COLOR , $OCIS_LOG_COLOR
-: Enable colored logging.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ### accounts server
 
@@ -193,6 +148,51 @@ Usage: `accounts health [command options] [arguments...]`
 
 -debug-addr |  $WOPISERVER_DEBUG_ADDR
 : Address to debug endpoint. Default: `0.0.0.0:9109`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### accounts wopiserver
+
+wopiserver, an example oCIS extension
+
+Usage: `accounts wopiserver [command options] [arguments...]`
+
+
+-config-file |  $WOPISERVER_CONFIG_FILE
+: Path to config file.
+
+
+-log-level |  $WOPISERVER_LOG_LEVEL , $OCIS_LOG_LEVEL
+: Set logging level. Default: `info`.
+
+
+-log-pretty |  $WOPISERVER_LOG_PRETTY , $OCIS_LOG_PRETTY
+: Enable pretty logging.
+
+
+-log-color |  $WOPISERVER_LOG_COLOR , $OCIS_LOG_COLOR
+: Enable colored logging.
+
 
 
 
