@@ -80,24 +80,24 @@ function getExtension (openMode, fileExtension) {
         }
         return config
       })
-      const tokenUrl = window.Vue.$store.getters['Wopi/getServerForJsClient'] + '/api/v0/wopi/open'
-      axios.get(tokenUrl, { params: { fileId: fileId } })
+      const tokenUrl = window.Vue.$store.getters['Wopi/getServerForJsClient'] + '/app/open'
+      axios.get(tokenUrl, { params: { file_id: fileId } })
         .then(response => {
           var form = document.createElement('form')
           form.setAttribute('method', 'POST')
-          form.setAttribute('action', response.data.wopiclienturl)
+          form.setAttribute('action', response.data.app_url)
           form.setAttribute('target', '_blank')
 
           var accesstoken = document.createElement('input')
           accesstoken.type = 'hidden'
           accesstoken.name = 'access_token'
-          accesstoken.value = response.data.accesstoken
+          accesstoken.value = response.data.form_parameters.access_token
           form.appendChild(accesstoken)
 
           var accesstokenttl = document.createElement('input')
           accesstokenttl.type = 'hidden'
           accesstokenttl.name = 'access_token_ttl'
-          accesstokenttl.value = response.data.accesstokenttl
+          accesstokenttl.value = response.data.form_parameters.access_token_ttl
           form.appendChild(accesstokenttl)
 
           var f = document.body.appendChild(form)
